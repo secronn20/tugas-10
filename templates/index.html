@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klasifikasi Kupu-Kupu AI - Deteksi Spesies dengan CNN</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Navbar Section -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fa-solid fa-leaf text-success"></i> ButterflyClassify.AI
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/"><i class="fa-solid fa-camera-retro me-1"></i> Klasifikasi</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard"><i class="fa-solid fa-chart-line me-1"></i> Dashboard Model</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about"><i class="fa-solid fa-circle-info me-1"></i> Tentang CNN</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <!-- Hero Header -->
+        <div class="text-center mb-5">
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill mb-3">
+                <i class="fa-solid fa-microchip me-1"></i> Proyek Deep Learning (Tugas 10)
+            </span>
+            <h1 class="display-5 fw-extrabold text-gradient">Klasifikasi Jenis Kupu-Kupu</h1>
+            <p class="lead text-secondary mx-auto" style="max-width: 650px;">
+                Unggah gambar kupu-kupu Anda dan sistem kecerdasan buatan berbasis <strong>Convolutional Neural Network (CNN)</strong> kami akan mengidentifikasi spesiesnya secara instan.
+            </p>
+        </div>
+
+        <!-- Warning Alert for Model Status -->
+        <div id="fallback-mode-alert" class="alert alert-warning border-warning-subtle bg-warning-subtle text-warning-emphasis d-none mb-4" role="alert">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            <strong>Catatan Demo (Model Belum Dilatih):</strong> Model CNN belum dilatih secara lokal. Aplikasi saat ini berjalan dalam mode simulasi. Harap jalankan <code>python train_model.py</code> terlebih dahulu di terminal untuk melatih model yang sesungguhnya.
+        </div>
+
+        <!-- Error Alert -->
+        <div id="error-alert" class="alert alert-danger border-danger-subtle bg-danger-subtle text-danger-emphasis d-none mb-4" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i>
+            Terjadi kesalahan saat memproses gambar.
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            <!-- Upload Column -->
+            <div class="col-lg-5">
+                <div class="card-premium h-100">
+                    <div class="card-header-premium">
+                        <h5 class="card-title mb-0"><i class="fa-solid fa-cloud-arrow-up me-2 text-success"></i> Unggah Gambar Kupu-Kupu</h5>
+                    </div>
+                    <div class="card-body d-flex flex-column justify-content-between p-4">
+                        <div class="upload-zone" id="upload-zone">
+                            <input type="file" id="file-input" class="file-input-hidden" accept="image/*">
+                            <div id="upload-prompt">
+                                <i class="fa-solid fa-images text-success"></i>
+                                <h6 class="mt-3 fw-bold text-white">Pilih atau Seret Gambar Ke Sini</h6>
+                                <p class="text-secondary small mb-0">Format yang didukung: PNG, JPG, JPEG, WEBP</p>
+                            </div>
+                            <!-- Local Preview -->
+                            <div class="preview-container" id="preview-container">
+                                <img src="" alt="Pratinjau Gambar" class="preview-img" id="preview-img">
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid mt-4">
+                            <button id="classify-btn" class="btn btn-premium btn-lg" disabled>
+                                <i class="fa-solid fa-bolt me-2"></i> Klasifikasi Gambar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loader Container (Hidden by default) -->
+            <div class="col-lg-7" id="loader-container">
+                <div class="card-premium d-flex justify-content-center align-items-center p-5 h-100">
+                    <div class="text-center py-4">
+                        <span class="dna-loader"></span>
+                        <h5 class="fw-semibold mt-3 text-white">Mengekstrak Fitur Gambar...</h5>
+                        <p class="text-secondary small mb-0">Lapisan konvolusi sedang memproses matriks piksel visual...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Column (Hidden by default) -->
+            <div class="col-lg-7" id="result-card" class="result-card">
+                <div class="card-premium w-100">
+                    <div class="card-header-premium d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0"><i class="fa-solid fa-square-poll-vertical me-2 text-success"></i> Hasil Analisis CNN</h5>
+                        <span class="confidence-badge" id="res-confidence">Kepercayaan 0.0%</span>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <div class="row g-4 mb-4">
+                            <!-- Image result -->
+                            <div class="col-md-5">
+                                <div class="result-image-card">
+                                    <img src="" alt="Gambar Hasil Klasifikasi" id="res-image">
+                                </div>
+                            </div>
+                            
+                            <!-- Classification results -->
+                            <div class="col-md-7 d-flex flex-column justify-content-between">
+                                <div>
+                                    <span class="text-secondary small uppercase fw-bold tracking-wider">PREDIKSI SPESIES</span>
+                                    <h2 class="fw-extrabold text-accent-gradient mb-0" id="res-class-name">Nama Kupu-Kupu</h2>
+                                    <p class="text-secondary fst-italic" style="font-size: 1.1rem;">
+                                        <i class="fa-solid fa-dna me-1 text-success"></i> <span id="res-scientific-name">Nama Ilmiah</span>
+                                    </p>
+                                    
+                                    <div class="progress-container mt-3">
+                                        <div class="progress-label-group">
+                                            <span class="text-secondary">Tingkat Keyakinan Prediksi</span>
+                                        </div>
+                                        <div class="progress-premium">
+                                            <div id="res-main-progress" class="progress-bar-premium" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Tabs of information -->
+                                <div class="mt-3">
+                                    <div class="info-pill">
+                                        <div class="info-pill-title"><i class="fa-solid fa-circle-info me-1"></i> Deskripsi Spesies</div>
+                                        <p class="small text-secondary mb-0" id="res-desc">Teks deskripsi...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Multi-column info details -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="info-pill h-100">
+                                    <div class="info-pill-title"><i class="fa-solid fa-mountain-sun me-1"></i> Habitat Alami</div>
+                                    <p class="small text-secondary mb-0" id="res-habitat">Teks habitat...</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-pill h-100">
+                                    <div class="info-pill-title"><i class="fa-solid fa-lightbulb me-1"></i> Fakta Menarik</div>
+                                    <p class="small text-secondary mb-0" id="res-funfact">Fakta menarik...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Class Probabilities distribution chart -->
+                        <div>
+                            <h6 class="fw-bold mb-3"><i class="fa-solid fa-chart-simple me-2 text-success"></i> Distribusi Probabilitas Klasifikasi</h6>
+                            <div style="height: 220px; position: relative;">
+                                <canvas id="probabilities-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container text-center">
+            <p class="mb-1 fw-semibold">&copy; 2026 Tugas Kecerdasan Buatan - Klasifikasi Kupu-Kupu CNN</p>
+            <p class="small text-secondary mb-0">Implementasi Convolutional Neural Network (CNN) & Flask Web. Dibuat dengan antusiasme teknologi.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 Bundle JS (contains Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
